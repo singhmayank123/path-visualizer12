@@ -2,7 +2,7 @@
 <html>
     <head>
         <meta charset="utf-8"/>
-        <title>Path Visualizer</title>
+        <title>Path Finder</title>
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
         <script src="https://code.jquery.com/jquery-3.5.1.min.js" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
@@ -45,7 +45,7 @@
                         <input id="bfs_diagonal" type="checkbox">&nbsp;
                         <label for="bfs_diagonal">Allow Diagonal</label>
                     </div>
-                    <button class="btn btn-success mb-2" onclick="startSearch('BFS')">start search</button>
+                    <button id = "bfs" class="btn btn-success mb-2" onclick="startSearch('BFS')">start search</button>
                 </div>
                 <div class="astar_panel" >
                     <div class="astar_search d-flex" >
@@ -71,7 +71,7 @@
                         <input id="astar_diagonal" type="checkbox">&nbsp;
                         <label for="astar_diagonal">Allow Diagonal</label>
                     </div>
-                    <button class="btn btn-success mb-2" onclick="startSearch('AStar')">start search</button>
+                    <button id = "astar" class="btn btn-success mb-2" onclick="startSearch('AStar')">start search</button>
                 </div>
                 <div class="dijkstra_panel " style="border-bottom: 1px white solid; margin-bottom:10px;">
                     <div class="dijkstra_search d-flex">
@@ -83,11 +83,12 @@
                         <input id="dijkstra_diagonal" type="checkbox">&nbsp;
                         <label for="dijkstra_diagonal">Allow Diagonal</label>
                     </div>
-                    <button class="btn btn-success mb-2" onclick="startSearch('Dijkstra')">start search</button>
+                    <button id = "dij" class="btn btn-success mb-2" onclick="startSearch('Dijkstra')">start search</button>
                 </div> 
                 <button class="btn btn-success pause_button" onclick="pauseSearch()">pause search</button>
                 <button class="btn btn-success resume_button" style="display:none;" onclick="pauseSearch()">resume search</button>
-                <button class="btn btn-success" onclick="clearWalls()">clear walls</button>   
+                <button class="btn btn-success" onclick="clearWalls()">clearWalls</button> <br> <br>
+                <button class="btn btn-success" onclick="showGraph()">2D plots</button> 
             </div>
             </div>
             <div class="post_search_info">
@@ -98,15 +99,28 @@
                 </div>
                 <div class="block"></div>
             </div>
-            <script src="/__/firebase/7.16.1/firebase-app.js"></script>
 
-            <!-- TODO: Add SDKs for Firebase products that you want to use
-                 https://firebase.google.com/docs/web/setup#available-libraries -->
-            <script src="/__/firebase/7.16.1/firebase-analytics.js"></script>
+            <div class="graphDiv">
+                <div id="graph1">
+                    <h2>Time Comparison</h2>
+                </div>
+                            
+                <div id="graph2">
+                    <h2>Path Length Comparison</h2>
+                </div>
+            </div>
+
             
-            <!-- Initialize Firebase -->
-            <script src="/__/firebase/init.js"></script>
+
+        <script src="https://d3js.org/d3.v7.min.js"></script>
+
+
+            
         <script> 
+
+
+
+
            function showAlgoInfo(algo){
                var img;
                switch(algo){
@@ -141,6 +155,7 @@
                     $('.controls_panel_con').css('transition', 'all 0.5s ease-in-out');
                 }
             }
+
             var time_taken = 0;
             var path_length = 0;
             var operations = 0;
@@ -151,17 +166,18 @@
             var explored_node = new Map(); 
             var w = 1920;
             var h = 1080;
-            var s_node = [15, 22];
+            var s_node = [];
             var ps_node;
             var pe_node;
-            var e_node = [15, 32];
+            var e_node = [];
             var prev_node = [-100, -100];
             var h_count = 0;
             var step = 30; 
             var finalPath;
             var canvasElementId = 'my_grid';
             var canvas = document.getElementById(canvasElementId);
-            canvas.addEventListener('click', handleClick);
+            let clickCounter = 0;
+        
             canvas.ondragstart = function() {
                 return false;
             };
@@ -172,36 +188,73 @@
 
             var ctx = canvas.getContext('2d');
 
-            function initialize_s_e_nodes(){
-                var y1 = s_node[0], x1 = s_node[1], y2 = e_node[0], x2 = e_node[1];
-                ctx.fillStyle = "green";
-                ctx.fillRect(x1 * step,y1 * step, step, step);
-                ctx.strokeStyle = "grey";
-                ctx.strokeRect(x1* step, y1 * step, step, step);
+            function initialize_s_e_nodes(x, y, color){
+                
+                ctx.fillStyle = color;
+                ctx.fillRect(x * step,y * step, step, step);
+                ctx.strokeStyle = color;
+                ctx.strokeRect(x* step, y * step, step, step);
 
-                ctx.fillStyle = "red";
-                ctx.fillRect(x2 * step,
-                        y2* step, step, step);
-                ctx.strokeStyle = "grey";
-                ctx.strokeRect(x2 * step,y2 * step, step, step);
             }
 
-            var drawGrid = function(ctx, w, h, step) {
-                ctx.beginPath(); 
-                for (var x = 0; x <= w; x += step) {
-                    ctx.moveTo(x, 0);
-                    ctx.lineTo(x, h);
+            canvas.addEventListener("click", function(event) {
+
+                var rect = canvas.getBoundingClientRect(); // Get the position of the canvas relative to the viewport
+                var clickX = event.clientX - rect.left; // Get the X coordinate of the click relative to the canvas
+                var clickY = event.clientY - rect.top; // Get the Y coordinate of the click relative to the canvas
+
+                // Convert the click coordinates to grid coordinates
+                x1 = Math.floor(clickX / step);
+                y1 = Math.floor(clickY / step);
+
+                console.log(y1 + "," + x1);
+
+                clickCounter++;
+
+                if(clickCounter == 1){
+                    s_node.push(y1);
+                    s_node.push(x1);
+                    initialize_s_e_nodes(x1, y1, "black");
+                    
                 }
-                ctx.strokeStyle = 'grey';
+
+                else if(clickCounter == 2){
+                    e_node.push(y1);
+                    e_node.push(x1);
+                    initialize_s_e_nodes(x1, y1, "red");
+                } 
+
+                else{
+
+                    if(!curr_process)
+                        colorBlock(event.offsetX, event.offsetY, 1);
+                }               
+
+            });
+
+
+
+            var drawGrid = function(ctx, w, h, step) {
+
+                ctx.beginPath(); 
+                for (var x = 0; x <= w + 1; x += step) {
+                    ctx.moveTo(x + 1, 0);
+                    ctx.lineTo(x + 1, h);
+                }
+                ctx.strokeStyle = 'green';
                 ctx.lineWidth = 1;
                 ctx.stroke(); 
 
                 ctx.beginPath(); 
-                for (var y = 0; y <= h; y += step) {
-                    ctx.moveTo(0, y);
-                    ctx.lineTo(w, y);
+                for (var y = 0; y <= h + 1; y += step) {
+                    ctx.moveTo(0, y + 1);
+                    ctx.lineTo(w, y + 1);
                 }
-                ctx.strokeStyle = 'grey';
+
+                ctx.moveTo(0, h); // Add this line
+                ctx.lineTo(w, h); // Add this line
+
+                ctx.strokeStyle = 'green';
                 ctx.lineWidth = 1;
                 ctx.stroke(); 
                 initialize_s_e_nodes();
@@ -211,8 +264,10 @@
                 var row, col;
                 col = Math.floor(x / step);
                 row = Math.floor(y / step);
+
                 switch(mode){
                     case 1:
+
                         console.log("start_block drag ");
                         prev_node[0] = s_node[0];
                         prev_node[1] = s_node[1];
@@ -222,7 +277,7 @@
                         //color previous node as white
                         if(explored_node.has(prev_node[0] + "," + prev_node[1]))
                         ctx.fillStyle = "skyblue";
-                        else ctx.fillStyle = "white";
+                        else ctx.fillStyle = "red";
 
                         ctx.fillRect(prev_node[1] * step, prev_node[0]* step, step, step);
                         // ctx.strokeStyle = "white";
@@ -233,12 +288,13 @@
                         //color current node
                         ctx.fillStyle = "green";
                         ctx.fillRect(s_node[1] * step, s_node[0]* step, step, step);
-                        ctx.strokeStyle = "white";
+                        ctx.strokeStyle = "red";
                         ctx.strokeRect(s_node[1] * step, s_node[0]* step, step, step);
                         ctx.strokeStyle = "grey";
                         ctx.strokeRect(s_node[1] * step, s_node[0]* step, step, step);
                         printPath(finalPath);
                         break;
+
                     case 2:
                         console.log("end_block drag ");
                         prev_node[0] = e_node[0];
@@ -249,10 +305,10 @@
                         //color previous node as white
                         if(explored_node.has(prev_node[0] + "," + prev_node[1]))
                         ctx.fillStyle = "skyblue";
-                        else ctx.fillStyle = "white";
+                        else ctx.fillStyle = "red";
 
                         ctx.fillRect(prev_node[1] * step, prev_node[0]* step, step, step);
-                        ctx.strokeStyle = "white";
+                        ctx.strokeStyle = "red";
                         ctx.strokeRect(prev_node[1] * step, prev_node[0]* step, step, step);
                         ctx.strokeStyle = "grey";
                         ctx.strokeRect(prev_node[1] * step, prev_node[0]* step, step, step);
@@ -260,7 +316,7 @@
                         //color current node
                         ctx.fillStyle = "red";
                         ctx.fillRect(e_node[1] * step, e_node[0]* step, step, step);
-                        ctx.strokeStyle = "white";
+                        ctx.strokeStyle = "red";
                         ctx.strokeRect(e_node[1] * step, e_node[0]* step, step, step);
                         ctx.strokeStyle = "grey";
                         ctx.strokeRect(e_node[1] * step, e_node[0]* step, step, step);
@@ -284,20 +340,24 @@
             }
 
             function clearExploredWalls(){
+
                 clearInterval(curr_process);
                 curr_process = null;
                 explored_node.clear();
                 ctx.clearRect(0, 0, w, h);
-                drawGrid(ctx, w, h, step);
-                drawObstacles(node_map);
+                initialize_s_e_nodes(s_node[1], s_node[0], "black");
+                initialize_s_e_nodes(e_node[1], e_node[0], "red");
+                 drawGrid(ctx, w, h, step);
+                 drawObstacles(node_map);
             }
+
             function drawObstacles(node_map){
                 for(var i = 0; i < 64;i++){
                     for(var j = 0; j < 36; j++){
                         if(node_map.has(j + "," + i)){
-                            ctx.fillStyle = "rgba(160, 82, 45, 0.5)";
+                            ctx.fillStyle = "#4dbf5c";
                             ctx.fillRect(i * step,j * step, step, step);
-                            ctx.strokeStyle = "grey";
+                            ctx.strokeStyle = "green";
                             ctx.strokeRect(i* step, j * step, step, step);
                         }
                     }
@@ -312,15 +372,16 @@
                 switch(mode){
                     case 1:
                         if(!node_map.has(row + "," + col) ){
+
                             if(explored_node.has(row + "," + col)){
-                                ctx.fillStyle = "white"; 
+                                ctx.fillStyle = "##bcedad"; 
                                 ctx.fillRect(Math.floor(x / step) * step,
                                 Math.floor(y / step) * step, step, step)
                             }
-                            ctx.fillStyle = "rgba(160, 82, 45, 0.5)";
+                            ctx.fillStyle = "#4dbf5c";
                             ctx.fillRect(Math.floor(x / step) * step,
                             Math.floor(y / step) * step, step, step);
-                            ctx.strokeStyle = "grey";
+                            ctx.strokeStyle = "green";
                             ctx.strokeRect(Math.floor(x / step) * step,Math.floor(y / step) * step, step, step);
                             node_map.set(row + "," +  col , true);    
                         }
@@ -335,7 +396,8 @@
                                 printPath(finalPath);
                             }
                             else{
-                                ctx.fillStyle = "white"; 
+
+                                ctx.fillStyle = "red"; 
                                 ctx.fillRect(Math.floor(x / step) * step,
                                 Math.floor(y / step) * step, step, step);
                                 ctx.strokeStyle = "grey";
@@ -347,14 +409,16 @@
                     case 2:
                         if(!node_map.has(row + "," + col) ){
                             h_count++;
-                            ctx.fillStyle = "white"; 
+
+                            // for the color of tarffic
+                            ctx.fillStyle = "#54f757"; 
                             ctx.fillRect(Math.floor(x / step) * step,
                             Math.floor(y / step) * step, step, step);
-                            ctx.fillStyle = "rgba(160, 82, 45, 0.5)";
+                            ctx.fillStyle = "#54f757";
                             node_map.set(row + "," +  col , true);    
                             ctx.fillRect(Math.floor(x / step) * step,
                             Math.floor(y / step) * step, step, step);
-                            ctx.strokeStyle = "grey";
+                            ctx.strokeStyle = "green";
                             ctx.strokeRect(Math.floor(x / step) * step,Math.floor(y / step) * step, step, step);
                         }
                         break;
@@ -362,11 +426,13 @@
             }
             
             function colorExploredPath(y, x){
+
+                // for color the traversing 
                 if(!explored_node.has(y + "," + x)){
                     if(y == s_node[0] && x == s_node[1]) return;
-                    ctx.fillStyle = "skyblue";
+                    ctx.fillStyle = "#2ce5f2";
                     ctx.fillRect(x * step,y * step, step, step);
-                    ctx.strokeStyle = "grey";
+                    ctx.strokeStyle = "green";
                     ctx.strokeRect(x* step, y * step, step, step);
                     explored_node.set(y + "," +  x , true);    
                 }  
@@ -382,7 +448,7 @@
                 ctx.moveTo(ps_node[1] * step + step/2, ps_node[0] * step + step/2);
                 ctx.lineTo(finalpath[0][1] * step + step/2, finalpath[0][0] * step + step/2);
                 ctx.lineWidth = 2;
-                ctx.strokeStyle = "yellow";
+                ctx.strokeStyle = "blue";
                 ctx.stroke(); 
                 for(var i = 1; i < finalpath.length; i++)
                 {   if(!node_map.has(finalpath[i][0] + "," + finalpath[i][1]) && !node_map.has(finalpath[i - 1][0] + "," + finalpath[i - 1][1])){
@@ -393,22 +459,27 @@
                         ctx.moveTo(finalpath[i - 1][1] * step + step/2, finalpath[i - 1][0] * step + step/2);
                         ctx.lineTo(finalpath[i][1] * step + step/2, finalpath[i][0] * step + step/2);
                         ctx.lineWidth = 2;
-                        ctx.strokeStyle = "yellow";
+                        ctx.strokeStyle = "blue";
                         ctx.stroke(); 
                     }
                 }
                 printPostSearchData(path_length);
             }
 
+
+            path_lengths = []
+
+            time_takens = []
+
             function printPostSearchData(path_length){
                 $('.post_search_info').html('path length: ' + Math.round(path_length * 100) / 100 + "<br>time: " + time_taken + " units");
+
+                path_lengths.push(path_length);
+                time_takens.push(time_taken);
+
             }
 
-            function handleClick(e) {
-                if(!curr_process)
-                    colorBlock(e.offsetX, e.offsetY, 1);
-            }
-
+           
             canvas.onmousedown = function(event) {
                 var h_count = 0;
                 var flag = 0;
@@ -422,6 +493,7 @@
                 }
 
                 function onMouseMove(event) {
+                    console.log("On Mouse move");
                     h_count++;
                     var col = Math.floor(event.pageX / step);
                     var row = Math.floor(event.pageY / step);
@@ -440,6 +512,7 @@
 
                 // (3) drop thecanvas, remove unneeded handlers
                 canvas.onmouseup = function() {
+                    console.log("On Mouse up");
                     document.removeEventListener('mousemove', onMouseMove);
                     if(h_count > 1){
                         window.addEventListener(
@@ -462,7 +535,9 @@
             //Algos part on user selection
            
 
+
             function startSearch(m){
+                console.log("start search");
                 path_length = 0;
                 time_taken = 0;
                 ps_node = [s_node[0], s_node[1]];
@@ -478,11 +553,15 @@
                 search_mode = m;
                 finalPath = [[]];
                 explored_node.clear();
+
                 clearExploredWalls();
+
                 switch(search_mode){
                     case "BFS":
                         var diagonal = $('#bfs_diagonal').is(":checked");
                         startBFSSearch(s_node, e_node, node_map, diagonal);
+                        console.log(path_length);
+                        // path_lengths.push(path_length);
                         break;
                     case "AStar":
                         var diagonal = $('#astar_diagonal').is(":checked");
@@ -492,10 +571,15 @@
                         else if($('#astar_chebyshev').is(":checked")) heuristics = "Chebyshev";
                         else if($('#astar_octile').is(":checked")) heuristics = "Octile";
                         startAStarSearch(s_node, e_node, node_map, diagonal, heuristics);
+                        console.log(path_length);
+                        // path_lengths.push(path_length);
                         break;
                     case "Dijkstra":
                         var diagonal = $('#dijkstra_diagonal').is(":checked");
                         startDjikstra(s_node, e_node, node_map, diagonal);
+                        console.log(path_length);
+                        // path_lengths.push(path_length);
+
                         break;
                 }
             }
@@ -515,6 +599,144 @@
 
             }
             drawGrid(ctx, w, h, step);
+
+            function showGraph(){
+
+                // pathLengths = [];
+                // timeList = [];
+
+                // $('#bfs').click();
+                // $('#astar').click();
+                // $('#dij').click();
+
+                document.querySelector(".graphDiv").style.display = "flex";
+
+                                // Sample data for the first bar graph (Time Comparison)
+                
+
+                console.log(path_lengths);
+
+
+                const timeData = [
+                  { algorithm: "BFS", time: time_takens[0] },
+                  { algorithm: "AStar", time: time_takens[1] },
+                  { algorithm: "Dijkstra", time: time_takens[2] }
+                ];
+
+                // Sample data for the second bar graph (Path Length Comparison)
+                const pathLengthData = [
+                  { algorithm: "BFS", length: path_lengths[0] },
+                  { algorithm: "AStar", length: path_lengths[1] },
+                  { algorithm: "Dijkstra", length: path_lengths[2]}
+                ];
+
+                // Set the dimensions of the SVG containers
+                const width = 500;
+                const height = 400;
+
+                // Set the margins
+                const margin = { top: 20, right: 20, bottom: 40, left: 40 };
+
+                // Calculate the inner width and height of the chart areas
+                const innerWidth = width - margin.left - margin.right;
+                const innerHeight = height - margin.top - margin.bottom;
+
+                // Create the first SVG container for the Time Comparison graph
+                const svg1 = d3.select("#graph1")
+                  .append("svg")
+                  .attr("width", width)
+                  .attr("height", height);
+
+                // Create the first chart area within the SVG container
+                const chart1 = svg1.append("g")
+                  .attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+                // Create the second SVG container for the Path Length Comparison graph
+                const svg2 = d3.select("#graph2")
+                  .append("svg")
+                  .attr("width", width)
+                  .attr("height", height);
+
+                // Create the second chart area within the SVG container
+                const chart2 = svg2.append("g")
+                  .attr("transform", `translate(${margin.left}, ${margin.top})`)
+                  .text("Path Length Comparison");
+
+                // Define the x and y scales for both graphs
+                const xScale = d3.scaleBand()
+                  .domain(timeData.map(d => d.algorithm))
+                  .range([0, innerWidth])
+                  .padding(0.2);
+
+                const yScale1 = d3.scaleLinear()
+                  .domain([0, d3.max(timeData, d => d.time)])
+                  .range([innerHeight, 0]);
+
+                const yScale2 = d3.scaleLinear()
+                  .domain([0, d3.max(pathLengthData, d => d.length)])
+                  .range([innerHeight, 0]);
+
+                // Create the x and y axes for both graphs
+                const xAxis1 = d3.axisBottom(xScale);
+                const yAxis1 = d3.axisLeft(yScale1);
+
+                const xAxis2 = d3.axisBottom(xScale);
+                const yAxis2 = d3.axisLeft(yScale2);
+
+                chart1.append("g")
+                  .attr("transform", `translate(0, ${innerHeight})`)
+                  .call(xAxis1);
+
+                chart1.append("g")
+                  .call(yAxis1);
+
+                chart2.append("g")
+                  .attr("transform", `translate(0, ${innerHeight})`)
+                  .call(xAxis2);
+
+                chart2.append("g")
+                  .call(yAxis2);
+
+                chart1.append("text")
+                  .attr("x", width / 2)
+                  .attr("y", height + (margin.top + margin.bottom) / 2)
+                  .attr("text-anchor", "middle")
+                  .attr("class", "graph-title")
+                  .text("Time Comparison");
+
+                chart1.selectAll("rect")
+                  .data(timeData)
+                  .enter()
+                  .append("rect")
+                  .attr("x", d => xScale(d.algorithm))
+                  .attr("y", d => yScale1(d.time))
+                  .attr("width", xScale.bandwidth())
+                  .attr("height", d => innerHeight - yScale1(d.time))
+                  .attr("fill", (d, i) => {
+                    // Define an array of colors
+                    const colors = ["steelblue", "lightgreen", "orange"];
+                    // Use the index to assign a color from the array
+                    return colors[i % colors.length];
+                  });
+
+                chart2.selectAll("rect")
+                  .data(pathLengthData)
+                  .enter()
+                  .append("rect")
+                  .attr("x", d => xScale(d.algorithm))
+                  .attr("y", d => yScale2(d.length))
+                  .attr("width", xScale.bandwidth())
+                  .attr("height", d => innerHeight - yScale2(d.length))
+                  .attr("fill", (d, i) => {
+                    // Define an array of colors
+                    const colors = ["lightcoral", "lightblue", "lightgreen"];
+                    // Use the index to assign a color from the array
+                    return colors[i % colors.length];
+                  });
+
+
+}
+
         </script>
     </body>
 </html>
