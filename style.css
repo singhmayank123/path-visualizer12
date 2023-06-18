@@ -31,7 +31,7 @@ body{ height:100%;padding: 0%;margin: 0%;}
     width:300px;
     margin: auto;
     color:white;
-    margin-left:50px;
+    margin-left:0px;
     padding:20px;
     padding-top:0px;
     padding-bottom: 0%;
@@ -121,4 +121,10 @@ body{ height:100%;padding: 0%;margin: 0%;}
     border: 2px solid green;
     justify-content: space-around;
     height: 500px;
+}
+.buttons{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    height: 32px;
 }
