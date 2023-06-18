@@ -21,12 +21,10 @@
                 <div class="ml-auto" style="cursor: pointer;" onclick="document.getElementById('instructions').style.display= 'none';"><i class="fa fa-times" aria-hidden="true" style="font-size:20px;"></i></div>
             </div>
         
-            &#9675; Click within the white grid and drag your mouse to draw obstacles.
+            &#9675; Make any two clicks within the white grid to set start and end psotion.
+            <br>&#9675; Drag your mouse to draw obstacles.
             <br>
-            &#9675; Drag the <font color="#0d0">green</font> node to set the start position.
-            <br>
-            &#9675; Drag the  <font color="#ff9166">red</font> node to set the end position.
-            <br>
+           
             &#9675; Choose an algorithm from the bottom-left panel.
             <br>
             &#9675; Click start search to start the animation of particular algorithm.
@@ -85,10 +83,12 @@
                     </div>
                     <button id = "dij" class="btn btn-success mb-2" onclick="startSearch('Dijkstra')">start search</button>
                 </div> 
+                <div class = "buttons">
                 <button class="btn btn-success pause_button" onclick="pauseSearch()">pause search</button>
                 <button class="btn btn-success resume_button" style="display:none;" onclick="pauseSearch()">resume search</button>
                 <button class="btn btn-success" onclick="clearWalls()">clearWalls</button> <br> <br>
                 <button class="btn btn-success" onclick="showGraph()">2D plots</button> 
+                </div>
             </div>
             </div>
             <div class="post_search_info">
